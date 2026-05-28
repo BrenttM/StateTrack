@@ -70,8 +70,6 @@
   .lbadge{background:var(--orange);color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;letter-spacing:1px;text-transform:uppercase;padding:4px 10px;border-radius:3px;white-space:nowrap;}
   .lnote{padding:8px 14px;background:rgba(212,96,10,0.07);border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .qbadge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:var(--orange);background:rgba(212,96,10,0.12);border-radius:3px;padding:2px 7px;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap;}
-
-  /* Auto-refresh status bar */
   .refresh-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px;color:var(--color-text-secondary);}
   .refresh-left{display:flex;align-items:center;gap:6px;}
   .refresh-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background 0.3s;}
@@ -90,8 +88,49 @@
   .meet-gallery-title .count-pill{background:var(--orange);color:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;padding:1px 7px;border-radius:10px;}
   .add-meet-photo-btn{display:flex;align-items:center;gap:6px;background:var(--orange);color:#fff;border:none;border-radius:7px;padding:7px 14px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.5px;transition:opacity 0.15s;}
   .add-meet-photo-btn:hover{opacity:0.85;}
-  .meet-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;}
-  .meet-photo-grid.empty{display:flex;align-items:center;justify-content:center;min-height:90px;background:var(--color-background-secondary);border-radius:8px;border:2px dashed var(--color-border-tertiary);}
+
+  /* Grid: max 3 rows, then scroll */
+  .meet-grid-wrap{
+    position:relative;
+    border-radius:8px;
+    overflow:hidden;
+  }
+  .meet-photo-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(90px,1fr));
+    gap:8px;
+    /* 3 rows × 98px thumb + 2 gaps × 8px = 310px */
+    max-height:310px;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding-right:2px;
+    scrollbar-width:thin;
+    scrollbar-color:var(--orange) transparent;
+    border-radius:8px;
+  }
+  .meet-photo-grid::-webkit-scrollbar{width:5px;}
+  .meet-photo-grid::-webkit-scrollbar-track{background:transparent;}
+  .meet-photo-grid::-webkit-scrollbar-thumb{background:var(--orange);border-radius:10px;}
+  /* Fade gradient at bottom when scrollable */
+  .meet-grid-wrap::after{
+    content:'';
+    position:absolute;
+    bottom:0;left:0;right:0;
+    height:32px;
+    background:linear-gradient(to bottom, transparent, var(--color-background-primary));
+    pointer-events:none;
+    border-radius:0 0 8px 8px;
+    opacity:0;
+    transition:opacity 0.2s;
+  }
+  .meet-grid-wrap.scrollable::after{opacity:1;}
+
+  .meet-photo-grid.empty{
+    display:flex;align-items:center;justify-content:center;
+    min-height:90px;max-height:none;overflow:visible;
+    background:var(--color-background-secondary);
+    border-radius:8px;border:2px dashed var(--color-border-tertiary);
+  }
   .meet-empty-msg{font-size:12px;color:var(--color-text-secondary);text-align:center;padding:16px;}
   .meet-thumb{position:relative;width:100%;padding-bottom:100%;border-radius:7px;overflow:hidden;border:2px solid transparent;transition:border-color 0.15s;cursor:pointer;}
   .meet-thumb:hover{border-color:var(--orange);}
@@ -142,7 +181,7 @@
     .lrow-main{grid-template-columns:68px 1fr auto;}
     .photo-strip{padding-left:14px;}
     .pgrid{grid-template-columns:1fr 90px 90px;}
-    .meet-photo-grid{grid-template-columns:repeat(auto-fill,minmax(75px,1fr));}
+    .meet-photo-grid{grid-template-columns:repeat(auto-fill,minmax(75px,1fr));max-height:258px;}
   }
 </style>
 
@@ -252,8 +291,6 @@
         <span style="font-size:12px;color:var(--color-text-secondary);">Requires qualifying from Day 1 prelims</span>
         <span style="font-size:11px;color:var(--color-text-secondary);margin-left:auto;">📸 Photos shared with all viewers</span>
       </div>
-
-      <!-- Auto-refresh status bar -->
       <div class="refresh-bar">
         <div class="refresh-left">
           <div class="refresh-dot live" id="refresh-dot"></div>
@@ -262,7 +299,6 @@
         <button class="refresh-now-btn" onclick="refreshNow()">Refresh now</button>
       </div>
 
-      <!-- General meet gallery -->
       <div class="meet-gallery">
         <div class="meet-gallery-header">
           <div class="meet-gallery-title">
@@ -274,8 +310,10 @@
             Add Photos
           </button>
         </div>
-        <div class="meet-photo-grid empty" id="meet-grid">
-          <div class="meet-empty-msg" id="meet-empty">No photos yet - be the first to add some!</div>
+        <div class="meet-grid-wrap" id="meet-grid-wrap">
+          <div class="meet-photo-grid empty" id="meet-grid">
+            <div class="meet-empty-msg" id="meet-empty">No photos yet - be the first to add some!</div>
+          </div>
         </div>
       </div>
 
@@ -297,27 +335,19 @@
 <input type="file" id="meet-file-input" accept="image/*" multiple style="display:none;">
 
 <script>
-const SUPA_URL = 'https://ayphnnlrhyyzbdskxris.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5cGhubmxyaHl5emJkc2t4cmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODQ2MzIsImV4cCI6MjA5NTU2MDYzMn0.FtHZFgUW5rggdhJjONSyruhdivhMHZyyc4hzhl3_nTc';
-const BUCKET = 'event-photos';
-const MEET_ROW_ID = 'general-meet';
-const REFRESH_SECS = 180;
-const hdrs = { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` };
+const SUPA_URL='https://ayphnnlrhyyzbdskxris.supabase.co';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5cGhubmxyaHl5emJkc2t4cmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODQ2MzIsImV4cCI6MjA5NTU2MDYzMn0.FtHZFgUW5rggdhJjONSyruhdivhMHZyyc4hzhl3_nTc';
+const BUCKET='event-photos';
+const MEET_ROW_ID='general-meet';
+const REFRESH_SECS=180;
+const hdrs={'apikey':SUPA_KEY,'Authorization':`Bearer ${SUPA_KEY}`};
 
-async function fetchPhotos(rowId) {
-  const res = await fetch(`${SUPA_URL}/rest/v1/event_photos?row_id=eq.${encodeURIComponent(rowId)}&order=uploaded_at.asc`, { headers:{...hdrs,'Content-Type':'application/json'} });
-  return res.ok ? await res.json() : [];
-}
-async function insertPhotoRecord(rowId, path) {
-  await fetch(`${SUPA_URL}/rest/v1/event_photos`, { method:'POST', headers:{...hdrs,'Content-Type':'application/json','Prefer':'return=minimal'}, body:JSON.stringify({row_id:rowId,storage_path:path}) });
-}
-async function deletePhotoRecord(id, path) {
-  await fetch(`${SUPA_URL}/rest/v1/event_photos?id=eq.${id}`, { method:'DELETE', headers:hdrs });
-  await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(path)}`, { method:'DELETE', headers:hdrs });
-}
-function publicUrl(path) { return `${SUPA_URL}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(path)}`; }
+async function fetchPhotos(rowId){const res=await fetch(`${SUPA_URL}/rest/v1/event_photos?row_id=eq.${encodeURIComponent(rowId)}&order=uploaded_at.asc`,{headers:{...hdrs,'Content-Type':'application/json'}});return res.ok?await res.json():[];}
+async function insertPhotoRecord(rowId,path){await fetch(`${SUPA_URL}/rest/v1/event_photos`,{method:'POST',headers:{...hdrs,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({row_id:rowId,storage_path:path})});}
+async function deletePhotoRecord(id,path){await fetch(`${SUPA_URL}/rest/v1/event_photos?id=eq.${id}`,{method:'DELETE',headers:hdrs});await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(path)}`,{method:'DELETE',headers:hdrs});}
+function publicUrl(path){return`${SUPA_URL}/storage/v1/object/public/${BUCKET}/${encodeURIComponent(path)}`;}
 
-// ---- Field table ----
+// Field table
 const cmap={'1A':'c1','2A':'c2','3A':'c3','4A':'c4','5A':'c5','6A':'c6'};
 const fd=[[1,'Fri','7:45 am','5A B','6A G','4A B','5A G','4A G','6A B','5A G','6A B','4A G'],[2,'Fri','9:30 am','4A G','6A B','','','','','5A B','4A G','4A B'],[3,'Fri','11:15 am','4A B','5A B','6A G','4A G','6A G','5A B','4A B','6A G','5A G'],[4,'Fri','1:00 pm','1A B','5A G','','','','','1A G','3A B','5A B'],[5,'Fri','2:45 pm','1A G','3A G','1A B','2A G','1A G','2A B','2A G','1A B','3A B'],[6,'Fri','4:30 pm','2A B','3A B','','','','','3A G','2A B','1A B'],[7,'Fri','6:15 pm','3A G','2A G','3A B','1A G','2A G','1A B','3A B','1A G','2A B'],[8,'Sat','8:00 am','6A B','2A B','5A B','3A G','5A G','3A B','6A G','5A B','2A G'],[9,'Sat','9:45 am','6A G','1A G','','','','','6A B','5A G','1A G'],[10,'Sat','11:30 am','5A G','1A B','6A B','2A B','3A G','4A B','4A G','3A G','6A G'],[11,'Sat','1:15 pm','3A B','4A G','','','','','2A B','4A B','6A B'],[12,'Sat','3:00 pm','2A G','4A B','','','','','1A B','2A G','3A G']];
 let activeFilter=null;
@@ -330,245 +360,61 @@ const fpg=document.getElementById('fpgrid');fp.forEach(([e,t1,t2])=>{fpg.innerHT
 const sf=[['Girls 100m High Hurdles','9:30 am'],['Boys 110m High Hurdles','10:00 am'],['Girls 4x800 Relay','10:30 am'],['Boys 4x800 Relay','11:40 am'],['* Hall of Fame Inductions',''],['Girls 100m Dash','12:45 pm'],['Boys 100m Dash','1:05 pm'],['Girls 1600m Run','1:25 pm'],['Boys 1600m Run','2:10 pm'],['Girls 4x100 Relay','3:00 pm'],['Boys 4x100 Relay','3:20 pm'],['Girls 400m Dash','3:45 pm'],['Boys 400m Dash','4:05 pm'],['Girls 300m Low Hurdles','4:30 pm'],['Boys 300m Int. Hurdles','4:50 pm'],['Girls 800m Run','5:10 pm'],['Boys 800m Run','5:35 pm'],['Girls 200m Dash','5:55 pm'],['Boys 200m Dash','6:15 pm'],['Girls 4x400 Relay','6:35 pm'],['Boys 4x400 Relay','7:00 pm']];
 const sfg=document.getElementById('sfgrid');sf.forEach(([e,t])=>{if(e.startsWith('*')){sfg.innerHTML+=`<div style="text-align:center;padding:6px;font-size:12px;color:var(--color-text-secondary);font-style:italic;border-bottom:0.5px solid var(--color-border-tertiary);">${e}</div>`;}else{sfg.innerHTML+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);"><span style="font-size:13px;font-weight:500;">${e}</span><span style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;">${t}</span></div>`;}});
 
-// ---- Auto-refresh countdown ----
-let countdownSecs = REFRESH_SECS;
-let countdownInterval = null;
-let refreshInterval = null;
+// Auto-refresh
+let countdownSecs=REFRESH_SECS,countdownInterval=null,refreshInterval=null;
+function startCountdown(){countdownSecs=REFRESH_SECS;updateCountdownDisplay();clearInterval(countdownInterval);countdownInterval=setInterval(()=>{countdownSecs--;updateCountdownDisplay();if(countdownSecs<=0)clearInterval(countdownInterval);},1000);}
+function updateCountdownDisplay(){const m=Math.floor(countdownSecs/60),s=countdownSecs%60;const el=document.getElementById('refresh-countdown');if(el)el.textContent=`${m}:${String(s).padStart(2,'0')}`;}
+function setSyncing(on){const dot=document.getElementById('refresh-dot'),status=document.getElementById('refresh-status');if(!dot||!status)return;if(on){dot.className='refresh-dot syncing';status.innerHTML='Checking for new photos...';}else{dot.className='refresh-dot live';status.innerHTML=`Photos refresh in <span class="refresh-countdown" id="refresh-countdown">${Math.floor(countdownSecs/60)}:${String(countdownSecs%60).padStart(2,'0')}</span>`;}}
+async function refreshNow(){setSyncing(true);await reloadAllPhotos();setSyncing(false);startCountdown();}
+function startAutoRefresh(){clearInterval(refreshInterval);startCountdown();refreshInterval=setInterval(async()=>{setSyncing(true);await reloadAllPhotos();setSyncing(false);startCountdown();},REFRESH_SECS*1000);}
 
-function startCountdown() {
-  countdownSecs = REFRESH_SECS;
-  updateCountdownDisplay();
-  clearInterval(countdownInterval);
-  countdownInterval = setInterval(() => {
-    countdownSecs--;
-    updateCountdownDisplay();
-    if (countdownSecs <= 0) {
-      clearInterval(countdownInterval);
-    }
-  }, 1000);
+// Check if meet grid is scrollable and update fade
+function updateGridScrollable(){
+  const grid=document.getElementById('meet-grid');
+  const wrap=document.getElementById('meet-grid-wrap');
+  if(!grid||!wrap)return;
+  wrap.classList.toggle('scrollable',grid.scrollHeight>grid.clientHeight+2);
 }
-
-function updateCountdownDisplay() {
-  const m = Math.floor(countdownSecs / 60);
-  const s = countdownSecs % 60;
-  const el = document.getElementById('refresh-countdown');
-  if (el) el.textContent = `${m}:${String(s).padStart(2,'0')}`;
-}
-
-function setSyncing(on) {
-  const dot = document.getElementById('refresh-dot');
-  const status = document.getElementById('refresh-status');
-  if (!dot || !status) return;
-  if (on) {
-    dot.className = 'refresh-dot syncing';
-    status.innerHTML = 'Checking for new photos...';
-  } else {
-    dot.className = 'refresh-dot live';
-    status.innerHTML = `Photos refresh in <span class="refresh-countdown" id="refresh-countdown">${Math.floor(countdownSecs/60)}:${String(countdownSecs%60).padStart(2,'0')}</span>`;
-  }
-}
-
-async function refreshNow() {
-  setSyncing(true);
-  await reloadAllPhotos();
-  setSyncing(false);
-  startCountdown();
-}
-
-function startAutoRefresh() {
-  clearInterval(refreshInterval);
-  startCountdown();
-  refreshInterval = setInterval(async () => {
-    setSyncing(true);
-    await reloadAllPhotos();
-    setSyncing(false);
-    startCountdown();
-  }, REFRESH_SECS * 1000);
-}
-
-// ---- Photo reload (diff-based — only adds new, doesn't disturb existing) ----
-const knownPhotos = {}; // rowId -> Set of record IDs already rendered
-
-async function reloadAllPhotos() {
-  // Meet gallery
-  await reloadRowPhotos(MEET_ROW_ID, 'meet');
-  // Event rows
-  const allRows = [...lfi.map((_,i)=>`fri-${i}`), ...lsa.map((_,i)=>`sat-${i}`)];
-  for (const rowId of allRows) {
-    await reloadRowPhotos(rowId, 'event');
-  }
-}
-
-async function reloadRowPhotos(rowId, type) {
-  if (!knownPhotos[rowId]) knownPhotos[rowId] = new Set();
-  const records = await fetchPhotos(rowId);
-  // Add only genuinely new photos
-  for (const rec of records) {
-    if (!knownPhotos[rowId].has(rec.id)) {
-      knownPhotos[rowId].add(rec.id);
-      if (type === 'meet') {
-        addMeetThumb(rec.storage_path, rec.id);
-      } else {
-        addThumb(rowId, rec.storage_path, rec.id);
-        updateBtn(rowId);
-      }
-    }
-  }
-  if (type === 'meet') updateMeetCount();
-}
-
-// ---- Meet gallery ----
-function triggerMeetUpload() {
-  document.getElementById('meet-file-input').value = '';
-  document.getElementById('meet-file-input').click();
-}
-document.getElementById('meet-file-input').addEventListener('change', async function() {
-  if (!this.files.length) return;
-  for (const file of Array.from(this.files)) {
-    const ext = file.name.split('.').pop();
-    const path = `${MEET_ROW_ID}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const res = await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(path)}`, { method:'POST', headers:{...hdrs,'Content-Type':file.type}, body:file });
-    if (res.ok) {
-      await insertPhotoRecord(MEET_ROW_ID, path);
-      const recs = await fetchPhotos(MEET_ROW_ID);
-      const newest = recs.find(r => r.storage_path === path);
-      if (newest && !knownPhotos[MEET_ROW_ID]?.has(newest.id)) {
-        if (!knownPhotos[MEET_ROW_ID]) knownPhotos[MEET_ROW_ID] = new Set();
-        knownPhotos[MEET_ROW_ID].add(newest.id);
-        addMeetThumb(path, newest.id);
-      }
-    }
-  }
-  updateMeetCount();
+// Hide fade when scrolled to bottom
+document.addEventListener('DOMContentLoaded',()=>{
+  const grid=document.getElementById('meet-grid');
+  if(grid) grid.addEventListener('scroll',()=>{
+    const wrap=document.getElementById('meet-grid-wrap');
+    const atBottom=grid.scrollHeight-grid.scrollTop<=grid.clientHeight+4;
+    if(wrap)wrap.classList.toggle('scrollable',!atBottom&&grid.scrollHeight>grid.clientHeight+2);
+  });
 });
 
-function addMeetThumb(storagePath, recordId) {
-  const grid = document.getElementById('meet-grid');
-  const empty = document.getElementById('meet-empty');
-  if (empty) { grid.classList.remove('empty'); empty.remove(); }
-  const url = publicUrl(storagePath);
-  const thumb = document.createElement('div');
-  thumb.className = 'meet-thumb';
-  thumb.dataset.recordId = recordId;
-  thumb.innerHTML = `<img src="${url}" alt="meet photo" onclick="openLightbox('${url}')"><button class="del-btn" onclick="removeMeetThumb('${recordId}','${storagePath}',this)" title="Remove"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
-  grid.appendChild(thumb);
-}
-async function removeMeetThumb(recordId, path, btn) {
-  const thumb = btn.closest('.meet-thumb');
-  thumb.style.opacity = '0.4';
-  await deletePhotoRecord(recordId, path);
-  if (knownPhotos[MEET_ROW_ID]) knownPhotos[MEET_ROW_ID].delete(recordId);
-  thumb.remove();
-  const grid = document.getElementById('meet-grid');
-  if (!grid.querySelectorAll('.meet-thumb').length) { grid.classList.add('empty'); grid.innerHTML='<div class="meet-empty-msg" id="meet-empty">No photos yet - be the first to add some!</div>'; }
-  updateMeetCount();
-}
-function updateMeetCount() {
-  const grid = document.getElementById('meet-grid');
-  const count = grid.querySelectorAll('.meet-thumb').length;
-  const pill = document.getElementById('meet-count');
-  if (count > 0) { pill.textContent = count; pill.style.display = 'inline-block'; } else { pill.style.display = 'none'; }
-}
+const knownPhotos={};
+async function reloadAllPhotos(){await reloadRowPhotos(MEET_ROW_ID,'meet');const allRows=[...lfi.map((_,i)=>`fri-${i}`),...lsa.map((_,i)=>`sat-${i}`)];for(const rowId of allRows)await reloadRowPhotos(rowId,'event');}
+async function reloadRowPhotos(rowId,type){if(!knownPhotos[rowId])knownPhotos[rowId]=new Set();const records=await fetchPhotos(rowId);for(const rec of records){if(!knownPhotos[rowId].has(rec.id)){knownPhotos[rowId].add(rec.id);if(type==='meet'){addMeetThumb(rec.storage_path,rec.id);}else{addThumb(rowId,rec.storage_path,rec.id);updateBtn(rowId);}}}if(type==='meet'){updateMeetCount();updateGridScrollable();}}
 
-// ---- Event rows ----
+// Meet gallery
+function triggerMeetUpload(){document.getElementById('meet-file-input').value='';document.getElementById('meet-file-input').click();}
+document.getElementById('meet-file-input').addEventListener('change',async function(){if(!this.files.length)return;for(const file of Array.from(this.files)){const ext=file.name.split('.').pop();const path=`${MEET_ROW_ID}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;const res=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(path)}`,{method:'POST',headers:{...hdrs,'Content-Type':file.type},body:file});if(res.ok){await insertPhotoRecord(MEET_ROW_ID,path);const recs=await fetchPhotos(MEET_ROW_ID);const newest=recs.find(r=>r.storage_path===path);if(newest&&!knownPhotos[MEET_ROW_ID]?.has(newest.id)){if(!knownPhotos[MEET_ROW_ID])knownPhotos[MEET_ROW_ID]=new Set();knownPhotos[MEET_ROW_ID].add(newest.id);addMeetThumb(path,newest.id);}}}updateMeetCount();updateGridScrollable();});
+
+function addMeetThumb(storagePath,recordId){const grid=document.getElementById('meet-grid');const empty=document.getElementById('meet-empty');if(empty){grid.classList.remove('empty');empty.remove();}const url=publicUrl(storagePath);const thumb=document.createElement('div');thumb.className='meet-thumb';thumb.dataset.recordId=recordId;thumb.innerHTML=`<img src="${url}" alt="meet photo" onclick="openLightbox('${url}')"><button class="del-btn" onclick="removeMeetThumb('${recordId}','${storagePath}',this)" title="Remove"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;grid.appendChild(thumb);setTimeout(updateGridScrollable,50);}
+async function removeMeetThumb(recordId,path,btn){const thumb=btn.closest('.meet-thumb');thumb.style.opacity='0.4';await deletePhotoRecord(recordId,path);if(knownPhotos[MEET_ROW_ID])knownPhotos[MEET_ROW_ID].delete(recordId);thumb.remove();const grid=document.getElementById('meet-grid');if(!grid.querySelectorAll('.meet-thumb').length){grid.classList.add('empty');grid.innerHTML='<div class="meet-empty-msg" id="meet-empty">No photos yet - be the first to add some!</div>';}updateMeetCount();updateGridScrollable();}
+function updateMeetCount(){const grid=document.getElementById('meet-grid');const count=grid.querySelectorAll('.meet-thumb').length;const pill=document.getElementById('meet-count');if(count>0){pill.textContent=count;pill.style.display='inline-block';}else{pill.style.display='none';}}
+
+// Event rows
 const lfi=[{t:'2:30 PM',e:'110m Hurdles',g:'Boys',q:false,a:'Lyric Medina'},{t:'2:45 PM',e:'High Jump',g:'Girls',q:false,a:'Phoebe Wright'},{t:'2:45 PM',e:'Pole Vault',g:'Boys',q:false,a:'Lucas Griffin'},{t:'2:55 PM',e:'4x100 Relay',g:'Girls',q:false,a:'Lexi Totty, Trysten Sowers, Jaedyn Segrist, Charleigh Bean'},{t:'3:15 PM',e:'4x100 Relay',g:'Boys',q:false,a:'Zach Criqui, Asher Edington, Lucas Griffin, James Marcotte'},{t:'3:35 PM',e:'400m Dash',g:'Girls',q:false,a:'Trysten Sowers, Charleigh Bean'},{t:'3:55 PM',e:'400m Dash',g:'Boys',q:false,a:'Zach Criqui, Cason Rhoads, Owen Edington'},{t:'4:45 PM',e:'300m Hurdles',g:'Boys',q:false,a:'Lyric Medina'},{t:'5:15 PM',e:'200m Dash',g:'Girls',q:false,a:'Trysten Sowers'},{t:'5:35 PM',e:'200m Dash',g:'Boys',q:false,a:'Asher Edington'},{t:'5:55 PM',e:'4x400 Relay',g:'Girls',q:false,a:'Lexi Totty, Trysten Sowers, Jaedyn Segrist, Charleigh Bean'},{t:'6:15 PM',e:'Pole Vault',g:'Girls',q:false,a:'Lexi Totty'},{t:'6:15 PM',e:'Javelin',g:'Boys',q:false,a:'Lyric Medina'},{t:'6:25 PM',e:'4x400 Relay',g:'Boys',q:false,a:'Zach Criqui, Owen Edington, Cason Rhoads, Lucas Griffin'}];
 const lsa=[{t:'8:00 AM',e:'Triple Jump',g:'Boys',q:false,a:'James Marcotte, Cason Rhoads'},{t:'9:00 AM',e:'100m Prelims',g:'Boys',q:false,a:'Asher Edington'},{t:'10:00 AM',e:'110m Hurdles Finals',g:'Boys',q:true,a:'Lyric Medina'},{t:'11:30 AM',e:'High Jump',g:'Boys',q:false,a:'Cason Rhoads'},{t:'11:40 AM',e:'4x800 Relay',g:'Boys',q:false,a:'Owen Edington, Lawson Moon, Cameron Weston, Kendall Wine'},{t:'1:05 PM',e:'100m Finals',g:'Boys',q:true,a:'Asher Edington'},{t:'1:15 PM',e:'Shot Put',g:'Boys',q:false,a:'James Chauncey'},{t:'3:00 PM',e:'4x100 Relay',g:'Girls',q:true,a:'Lexi Totty, Trysten Sowers, Jaedyn Segrist, Charleigh Bean'},{t:'3:20 PM',e:'4x100 Relay',g:'Boys',q:true,a:'Zach Criqui, Asher Edington, Lucas Griffin, James Marcotte'},{t:'3:45 PM',e:'400m Dash',g:'Girls',q:true,a:'Trysten Sowers, Charleigh Bean'},{t:'4:05 PM',e:'400m Dash',g:'Boys',q:true,a:'Zach Criqui, Cason Rhoads, Owen Edington'},{t:'4:50 PM',e:'300m Hurdles',g:'Boys',q:true,a:'Lyric Medina'},{t:'5:35 PM',e:'800m Run',g:'Boys',q:false,a:'Kendall Wine'},{t:'5:55 PM',e:'200m Dash',g:'Girls',q:true,a:'Trysten Sowers'},{t:'6:15 PM',e:'200m Dash',g:'Boys',q:true,a:'Asher Edington'},{t:'6:35 PM',e:'4x400 Relay',g:'Girls',q:true,a:'Lexi Totty, Trysten Sowers, Jaedyn Segrist, Charleigh Bean'},{t:'7:00 PM',e:'4x400 Relay',g:'Boys',q:true,a:'Zach Criqui, Owen Edington, Cason Rhoads, Lucas Griffin'}];
-
-let pendingRowId = null;
-
-function renderLyndon(data, containerId, prefix) {
-  const el = document.getElementById(containerId);
-  data.forEach(({t,e,g,q,a}, i) => {
-    const rowId = `${prefix}-${i}`;
-    const gb = g==='Girls' ? `<span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;background:#FBEAF0;color:#72243E;padding:2px 5px;border-radius:3px;">G</span>` : `<span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;background:#E6F1FB;color:#0C447C;padding:2px 5px;border-radius:3px;">B</span>`;
-    const ql = q ? `<div class="qbadge" style="margin-bottom:3px;">* If Qualified</div>` : '';
-    el.innerHTML += `<div class="lrow${q?' q':''}" id="row-${rowId}"><div class="lrow-main"><div class="ltime">${t}</div><div class="lrow-center">${ql}<div class="levent">${e} ${gb}</div><div class="lathletes">${a}</div></div><button class="photo-btn" id="btn-${rowId}" onclick="toggleStrip('${rowId}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="btn-label">Photos</span><span class="chevron"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button></div><div class="photo-strip" id="strip-${rowId}"><div class="photo-add-thumb" onclick="triggerUpload('${rowId}')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Add</span></div></div></div>`;
-  });
-}
+let pendingRowId=null;
+function renderLyndon(data,containerId,prefix){const el=document.getElementById(containerId);data.forEach(({t,e,g,q,a},i)=>{const rowId=`${prefix}-${i}`;const gb=g==='Girls'?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;background:#FBEAF0;color:#72243E;padding:2px 5px;border-radius:3px;">G</span>`:`<span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;background:#E6F1FB;color:#0C447C;padding:2px 5px;border-radius:3px;">B</span>`;const ql=q?`<div class="qbadge" style="margin-bottom:3px;">* If Qualified</div>`:'';el.innerHTML+=`<div class="lrow${q?' q':''}" id="row-${rowId}"><div class="lrow-main"><div class="ltime">${t}</div><div class="lrow-center">${ql}<div class="levent">${e} ${gb}</div><div class="lathletes">${a}</div></div><button class="photo-btn" id="btn-${rowId}" onclick="toggleStrip('${rowId}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="btn-label">Photos</span><span class="chevron"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button></div><div class="photo-strip" id="strip-${rowId}"><div class="photo-add-thumb" onclick="triggerUpload('${rowId}')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Add</span></div></div></div>`;});}
 renderLyndon(lfi,'lfri','fri');
 renderLyndon(lsa,'lsat','sat');
 
-function toggleStrip(rowId) {
-  const strip = document.getElementById(`strip-${rowId}`);
-  const btn = document.getElementById(`btn-${rowId}`);
-  const isOpen = strip.classList.contains('open');
-  strip.classList.toggle('open',!isOpen);
-  btn.classList.toggle('open',!isOpen);
-}
-function triggerUpload(rowId) {
-  pendingRowId = rowId;
-  document.getElementById('file-input').value = '';
-  document.getElementById('file-input').click();
-}
-document.getElementById('file-input').addEventListener('change', async function() {
-  if (!pendingRowId || !this.files.length) return;
-  const rowId = pendingRowId;
-  for (const file of Array.from(this.files)) {
-    const ext = file.name.split('.').pop();
-    const path = `${rowId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const res = await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(path)}`, { method:'POST', headers:{...hdrs,'Content-Type':file.type}, body:file });
-    if (res.ok) {
-      await insertPhotoRecord(rowId, path);
-      const recs = await fetchPhotos(rowId);
-      const newest = recs.find(r => r.storage_path === path);
-      if (newest && !knownPhotos[rowId]?.has(newest.id)) {
-        if (!knownPhotos[rowId]) knownPhotos[rowId] = new Set();
-        knownPhotos[rowId].add(newest.id);
-        addThumb(rowId, path, newest.id);
-        updateBtn(rowId);
-      }
-    }
-  }
-});
+function toggleStrip(rowId){const strip=document.getElementById(`strip-${rowId}`);const btn=document.getElementById(`btn-${rowId}`);const isOpen=strip.classList.contains('open');strip.classList.toggle('open',!isOpen);btn.classList.toggle('open',!isOpen);}
+function triggerUpload(rowId){pendingRowId=rowId;document.getElementById('file-input').value='';document.getElementById('file-input').click();}
+document.getElementById('file-input').addEventListener('change',async function(){if(!pendingRowId||!this.files.length)return;const rowId=pendingRowId;for(const file of Array.from(this.files)){const ext=file.name.split('.').pop();const path=`${rowId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;const res=await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(path)}`,{method:'POST',headers:{...hdrs,'Content-Type':file.type},body:file});if(res.ok){await insertPhotoRecord(rowId,path);const recs=await fetchPhotos(rowId);const newest=recs.find(r=>r.storage_path===path);if(newest&&!knownPhotos[rowId]?.has(newest.id)){if(!knownPhotos[rowId])knownPhotos[rowId]=new Set();knownPhotos[rowId].add(newest.id);addThumb(rowId,path,newest.id);updateBtn(rowId);}}}});
+function addThumb(rowId,storagePath,recordId){const strip=document.getElementById(`strip-${rowId}`);if(!strip)return;const addBtn=strip.querySelector('.photo-add-thumb');const url=publicUrl(storagePath);const thumb=document.createElement('div');thumb.className='photo-thumb';thumb.dataset.recordId=recordId;thumb.innerHTML=`<img src="${url}" alt="event photo" onclick="openLightbox('${url}')"><button class="del-btn" onclick="removeThumb('${rowId}','${recordId}','${storagePath}',this)" title="Remove"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;strip.insertBefore(thumb,addBtn);}
+async function removeThumb(rowId,recordId,path,btn){const thumb=btn.closest('.photo-thumb');thumb.style.opacity='0.4';await deletePhotoRecord(recordId,path);if(knownPhotos[rowId])knownPhotos[rowId].delete(recordId);thumb.remove();updateBtn(rowId);}
+function updateBtn(rowId){const strip=document.getElementById(`strip-${rowId}`);const count=strip.querySelectorAll('.photo-thumb').length;const btn=document.getElementById(`btn-${rowId}`);if(!btn)return;const chevron=`<span class="chevron"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;const cam=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;const isOpen=btn.classList.contains('open');btn.classList.toggle('has-photos',count>0);btn.innerHTML=count>0?`${cam} <span class="btn-label">Photos <span class="photo-count">${count}</span></span> ${chevron}`:`${cam} <span class="btn-label">Photos</span> ${chevron}`;btn.classList.toggle('open',isOpen);}
+function openLightbox(url){document.getElementById('lightbox-img').src=url;document.getElementById('lightbox').classList.add('open');}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');document.getElementById('lightbox-img').src='';}
 
-function addThumb(rowId, storagePath, recordId) {
-  const strip = document.getElementById(`strip-${rowId}`);
-  if (!strip) return;
-  const addBtn = strip.querySelector('.photo-add-thumb');
-  const url = publicUrl(storagePath);
-  const thumb = document.createElement('div');
-  thumb.className = 'photo-thumb';
-  thumb.dataset.recordId = recordId;
-  thumb.innerHTML = `<img src="${url}" alt="event photo" onclick="openLightbox('${url}')"><button class="del-btn" onclick="removeThumb('${rowId}','${recordId}','${storagePath}',this)" title="Remove"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
-  strip.insertBefore(thumb, addBtn);
-}
-async function removeThumb(rowId, recordId, path, btn) {
-  const thumb = btn.closest('.photo-thumb');
-  thumb.style.opacity = '0.4';
-  await deletePhotoRecord(recordId, path);
-  if (knownPhotos[rowId]) knownPhotos[rowId].delete(recordId);
-  thumb.remove();
-  updateBtn(rowId);
-}
-function updateBtn(rowId) {
-  const strip = document.getElementById(`strip-${rowId}`);
-  const count = strip.querySelectorAll('.photo-thumb').length;
-  const btn = document.getElementById(`btn-${rowId}`);
-  if (!btn) return;
-  const chevron = `<span class="chevron"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
-  const cam = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
-  const isOpen = btn.classList.contains('open');
-  btn.classList.toggle('has-photos', count > 0);
-  btn.innerHTML = count > 0 ? `${cam} <span class="btn-label">Photos <span class="photo-count">${count}</span></span> ${chevron}` : `${cam} <span class="btn-label">Photos</span> ${chevron}`;
-  btn.classList.toggle('open', isOpen);
-}
-
-function openLightbox(url) { document.getElementById('lightbox-img').src=url; document.getElementById('lightbox').classList.add('open'); }
-function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); document.getElementById('lightbox-img').src=''; }
-
-// ---- Initial load + auto-refresh ----
-let photosLoaded = false;
-async function initialLoad() {
-  setSyncing(true);
-  await reloadAllPhotos();
-  setSyncing(false);
-  startAutoRefresh();
-}
-
-function showTab(n) {
-  document.querySelectorAll('.tab').forEach((t,i)=>{t.classList.toggle('active',['field','running','scoring','lyndon'][i]===n);});
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('panel-'+n).classList.add('active');
-  if (n==='lyndon' && !photosLoaded) { photosLoaded=true; initialLoad(); }
-}
+let photosLoaded=false;
+async function initialLoad(){setSyncing(true);await reloadAllPhotos();setSyncing(false);startAutoRefresh();}
+function showTab(n){document.querySelectorAll('.tab').forEach((t,i)=>{t.classList.toggle('active',['field','running','scoring','lyndon'][i]===n);});document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.getElementById('panel-'+n).classList.add('active');if(n==='lyndon'&&!photosLoaded){photosLoaded=true;initialLoad();}}
 </script>
