@@ -64,8 +64,6 @@
   .wc-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary);font-size:13px;}
   .wc-row:last-child{border-bottom:none;}
   .wc-t{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;}
-
-  /* Lyndon header */
   .lhdr{background:var(--black);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:12px;border-bottom:3px solid var(--orange);}
   .lschool{font-family:'Barlow Condensed',sans-serif;font-size:clamp(18px,4vw,24px);font-weight:900;text-transform:uppercase;letter-spacing:1px;}
   .lsub{font-size:12px;color:rgba(255,255,255,0.6);margin-top:2px;}
@@ -73,8 +71,19 @@
   .lnote{padding:8px 14px;background:rgba(212,96,10,0.07);border-bottom:0.5px solid var(--color-border-tertiary);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .qbadge{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:var(--orange);background:rgba(212,96,10,0.12);border-radius:3px;padding:2px 7px;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.5px;text-transform:uppercase;white-space:nowrap;}
 
-  /* General meet gallery */
-  .meet-gallery{padding:12px 14px;border-bottom:2px solid var(--color-border-tertiary);background:var(--color-background-primary);}
+  /* Auto-refresh status bar */
+  .refresh-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 14px;background:var(--color-background-secondary);border-bottom:0.5px solid var(--color-border-tertiary);font-size:11px;color:var(--color-text-secondary);}
+  .refresh-left{display:flex;align-items:center;gap:6px;}
+  .refresh-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background 0.3s;}
+  .refresh-dot.syncing{background:var(--orange);animation:pulse 1s infinite;}
+  .refresh-dot.live{background:#22c55e;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+  .refresh-countdown{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;}
+  .refresh-now-btn{background:transparent;border:1px solid var(--color-border-tertiary);border-radius:4px;padding:2px 8px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:var(--color-text-secondary);cursor:pointer;transition:all 0.15s;}
+  .refresh-now-btn:hover{border-color:var(--orange);color:var(--orange);}
+
+  /* Meet gallery */
+  .meet-gallery{padding:12px 14px;border-bottom:2px solid var(--color-border-tertiary);}
   .meet-gallery-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
   .meet-gallery-title{display:flex;align-items:center;gap:8px;}
   .meet-gallery-title h3{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:var(--color-text-primary);}
@@ -84,13 +93,12 @@
   .meet-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;}
   .meet-photo-grid.empty{display:flex;align-items:center;justify-content:center;min-height:90px;background:var(--color-background-secondary);border-radius:8px;border:2px dashed var(--color-border-tertiary);}
   .meet-empty-msg{font-size:12px;color:var(--color-text-secondary);text-align:center;padding:16px;}
-  .meet-thumb{position:relative;width:100%;padding-bottom:100%;border-radius:7px;overflow:hidden;border:2px solid transparent;transition:border-color 0.15s;cursor:pointer;background:var(--color-background-secondary);}
+  .meet-thumb{position:relative;width:100%;padding-bottom:100%;border-radius:7px;overflow:hidden;border:2px solid transparent;transition:border-color 0.15s;cursor:pointer;}
   .meet-thumb:hover{border-color:var(--orange);}
   .meet-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
   .meet-thumb .del-btn{position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.65);border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.15s;z-index:2;}
   .meet-thumb:hover .del-btn{opacity:1;}
 
-  /* Event rows */
   .lday-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px 7px;border-bottom:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);}
   .ldpill{font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:3px 9px;border-radius:3px;}
   .ldfri{background:var(--orange);color:#fff;}
@@ -245,7 +253,16 @@
         <span style="font-size:11px;color:var(--color-text-secondary);margin-left:auto;">📸 Photos shared with all viewers</span>
       </div>
 
-      <!-- General meet photo gallery -->
+      <!-- Auto-refresh status bar -->
+      <div class="refresh-bar">
+        <div class="refresh-left">
+          <div class="refresh-dot live" id="refresh-dot"></div>
+          <span id="refresh-status">Photos refresh in <span class="refresh-countdown" id="refresh-countdown">3:00</span></span>
+        </div>
+        <button class="refresh-now-btn" onclick="refreshNow()">Refresh now</button>
+      </div>
+
+      <!-- General meet gallery -->
       <div class="meet-gallery">
         <div class="meet-gallery-header">
           <div class="meet-gallery-title">
@@ -284,6 +301,7 @@ const SUPA_URL = 'https://ayphnnlrhyyzbdskxris.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF5cGhubmxyaHl5emJkc2t4cmlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5ODQ2MzIsImV4cCI6MjA5NTU2MDYzMn0.FtHZFgUW5rggdhJjONSyruhdivhMHZyyc4hzhl3_nTc';
 const BUCKET = 'event-photos';
 const MEET_ROW_ID = 'general-meet';
+const REFRESH_SECS = 180;
 const hdrs = { 'apikey': SUPA_KEY, 'Authorization': `Bearer ${SUPA_KEY}` };
 
 async function fetchPhotos(rowId) {
@@ -307,33 +325,121 @@ function makeChip(v){if(!v)return'<span style="color:var(--color-text-secondary)
 const tb=document.getElementById('ftbody');
 fd.forEach(([s,d,t,...cells])=>{const db=d==='Fri'?`<span class="dfri">Fri</span>`:`<span class="dsat">Sat</span>`;const classes=[...new Set(cells.map(c=>{const m=c.match(/^(\d+A)/);return m?m[1]:'';}).filter(Boolean))].join(' ');tb.innerHTML+=`<tr data-classes="${classes}"><td class="sn">${s}</td><td>${db}</td><td style="white-space:nowrap;font-size:12px;">${t}</td>${cells.map(c=>`<td>${makeChip(c)}</td>`).join('')}</tr>`;});
 function toggleFilter(cls,el){const table=document.getElementById('ftbl');if(activeFilter===cls){activeFilter=null;el.classList.remove('selected');table.classList.remove('has-filter');document.querySelectorAll('#ftbody tr').forEach(r=>r.classList.remove('has-match','no-match'));document.querySelectorAll('#ftbody .cell-chip').forEach(c=>c.classList.remove('lit'));}else{document.querySelectorAll('.lchip.selected').forEach(c=>c.classList.remove('selected'));activeFilter=cls;el.classList.add('selected');table.classList.add('has-filter');document.querySelectorAll('#ftbody tr').forEach(r=>{const match=(r.getAttribute('data-classes')||'').split(' ').includes(cls);r.classList.toggle('has-match',match);r.classList.toggle('no-match',!match);});document.querySelectorAll('#ftbody .cell-chip').forEach(c=>{c.classList.toggle('lit',c.getAttribute('data-class')===cls);});}}
-
 const fp=[['Girls 100m High Hurdles','9:00 am','2:10 pm'],['Boys 110m High Hurdles','9:20 am','2:30 pm'],['Girls 4x100 Relay','9:45 am','2:55 pm'],['Boys 4x100 Relay','10:05 am','3:15 pm'],['Girls 400m Dash','10:25 am','3:35 pm'],['Boys 400m Dash','10:45 am','3:55 pm'],['Girls 300m Low Hurdles','11:10 am','4:20 pm'],['Boys 300m Int. Hurdles','11:35 am','4:45 pm'],['Girls 200m Dash','12:05 pm','5:15 pm'],['Boys 200m Dash','12:25 pm','5:35 pm'],['Girls 4x400 Relay','12:45 pm','5:55 pm'],['Boys 4x400 Relay','1:15 pm','6:25 pm']];
 const fpg=document.getElementById('fpgrid');fp.forEach(([e,t1,t2])=>{fpg.innerHTML+=`<div class="prow"><div style="font-size:13px;font-weight:500;">${e}</div><div>${t1}</div><div>${t2}</div></div>`;});
 const sf=[['Girls 100m High Hurdles','9:30 am'],['Boys 110m High Hurdles','10:00 am'],['Girls 4x800 Relay','10:30 am'],['Boys 4x800 Relay','11:40 am'],['* Hall of Fame Inductions',''],['Girls 100m Dash','12:45 pm'],['Boys 100m Dash','1:05 pm'],['Girls 1600m Run','1:25 pm'],['Boys 1600m Run','2:10 pm'],['Girls 4x100 Relay','3:00 pm'],['Boys 4x100 Relay','3:20 pm'],['Girls 400m Dash','3:45 pm'],['Boys 400m Dash','4:05 pm'],['Girls 300m Low Hurdles','4:30 pm'],['Boys 300m Int. Hurdles','4:50 pm'],['Girls 800m Run','5:10 pm'],['Boys 800m Run','5:35 pm'],['Girls 200m Dash','5:55 pm'],['Boys 200m Dash','6:15 pm'],['Girls 4x400 Relay','6:35 pm'],['Boys 4x400 Relay','7:00 pm']];
 const sfg=document.getElementById('sfgrid');sf.forEach(([e,t])=>{if(e.startsWith('*')){sfg.innerHTML+=`<div style="text-align:center;padding:6px;font-size:12px;color:var(--color-text-secondary);font-style:italic;border-bottom:0.5px solid var(--color-border-tertiary);">${e}</div>`;}else{sfg.innerHTML+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);"><span style="font-size:13px;font-weight:500;">${e}</span><span style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;">${t}</span></div>`;}});
+
+// ---- Auto-refresh countdown ----
+let countdownSecs = REFRESH_SECS;
+let countdownInterval = null;
+let refreshInterval = null;
+
+function startCountdown() {
+  countdownSecs = REFRESH_SECS;
+  updateCountdownDisplay();
+  clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    countdownSecs--;
+    updateCountdownDisplay();
+    if (countdownSecs <= 0) {
+      clearInterval(countdownInterval);
+    }
+  }, 1000);
+}
+
+function updateCountdownDisplay() {
+  const m = Math.floor(countdownSecs / 60);
+  const s = countdownSecs % 60;
+  const el = document.getElementById('refresh-countdown');
+  if (el) el.textContent = `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function setSyncing(on) {
+  const dot = document.getElementById('refresh-dot');
+  const status = document.getElementById('refresh-status');
+  if (!dot || !status) return;
+  if (on) {
+    dot.className = 'refresh-dot syncing';
+    status.innerHTML = 'Checking for new photos...';
+  } else {
+    dot.className = 'refresh-dot live';
+    status.innerHTML = `Photos refresh in <span class="refresh-countdown" id="refresh-countdown">${Math.floor(countdownSecs/60)}:${String(countdownSecs%60).padStart(2,'0')}</span>`;
+  }
+}
+
+async function refreshNow() {
+  setSyncing(true);
+  await reloadAllPhotos();
+  setSyncing(false);
+  startCountdown();
+}
+
+function startAutoRefresh() {
+  clearInterval(refreshInterval);
+  startCountdown();
+  refreshInterval = setInterval(async () => {
+    setSyncing(true);
+    await reloadAllPhotos();
+    setSyncing(false);
+    startCountdown();
+  }, REFRESH_SECS * 1000);
+}
+
+// ---- Photo reload (diff-based — only adds new, doesn't disturb existing) ----
+const knownPhotos = {}; // rowId -> Set of record IDs already rendered
+
+async function reloadAllPhotos() {
+  // Meet gallery
+  await reloadRowPhotos(MEET_ROW_ID, 'meet');
+  // Event rows
+  const allRows = [...lfi.map((_,i)=>`fri-${i}`), ...lsa.map((_,i)=>`sat-${i}`)];
+  for (const rowId of allRows) {
+    await reloadRowPhotos(rowId, 'event');
+  }
+}
+
+async function reloadRowPhotos(rowId, type) {
+  if (!knownPhotos[rowId]) knownPhotos[rowId] = new Set();
+  const records = await fetchPhotos(rowId);
+  // Add only genuinely new photos
+  for (const rec of records) {
+    if (!knownPhotos[rowId].has(rec.id)) {
+      knownPhotos[rowId].add(rec.id);
+      if (type === 'meet') {
+        addMeetThumb(rec.storage_path, rec.id);
+      } else {
+        addThumb(rowId, rec.storage_path, rec.id);
+        updateBtn(rowId);
+      }
+    }
+  }
+  if (type === 'meet') updateMeetCount();
+}
 
 // ---- Meet gallery ----
 function triggerMeetUpload() {
   document.getElementById('meet-file-input').value = '';
   document.getElementById('meet-file-input').click();
 }
-
 document.getElementById('meet-file-input').addEventListener('change', async function() {
   if (!this.files.length) return;
   for (const file of Array.from(this.files)) {
     const ext = file.name.split('.').pop();
     const path = `${MEET_ROW_ID}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const res = await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(path)}`, {
-      method:'POST', headers:{...hdrs,'Content-Type':file.type}, body:file
-    });
+    const res = await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(path)}`, { method:'POST', headers:{...hdrs,'Content-Type':file.type}, body:file });
     if (res.ok) {
       await insertPhotoRecord(MEET_ROW_ID, path);
       const recs = await fetchPhotos(MEET_ROW_ID);
-      const newest = recs[recs.length - 1];
-      addMeetThumb(path, newest.id);
+      const newest = recs.find(r => r.storage_path === path);
+      if (newest && !knownPhotos[MEET_ROW_ID]?.has(newest.id)) {
+        if (!knownPhotos[MEET_ROW_ID]) knownPhotos[MEET_ROW_ID] = new Set();
+        knownPhotos[MEET_ROW_ID].add(newest.id);
+        addMeetThumb(path, newest.id);
+      }
     }
   }
+  updateMeetCount();
 });
 
 function addMeetThumb(storagePath, recordId) {
@@ -343,34 +449,25 @@ function addMeetThumb(storagePath, recordId) {
   const url = publicUrl(storagePath);
   const thumb = document.createElement('div');
   thumb.className = 'meet-thumb';
-  thumb.innerHTML = `
-    <img src="${url}" alt="meet photo" onclick="openLightbox('${url}')">
-    <button class="del-btn" onclick="removeMeetThumb('${recordId}','${storagePath}',this)" title="Remove">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>`;
+  thumb.dataset.recordId = recordId;
+  thumb.innerHTML = `<img src="${url}" alt="meet photo" onclick="openLightbox('${url}')"><button class="del-btn" onclick="removeMeetThumb('${recordId}','${storagePath}',this)" title="Remove"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
   grid.appendChild(thumb);
-  updateMeetCount();
 }
-
 async function removeMeetThumb(recordId, path, btn) {
   const thumb = btn.closest('.meet-thumb');
   thumb.style.opacity = '0.4';
   await deletePhotoRecord(recordId, path);
+  if (knownPhotos[MEET_ROW_ID]) knownPhotos[MEET_ROW_ID].delete(recordId);
   thumb.remove();
   const grid = document.getElementById('meet-grid');
-  if (!grid.querySelectorAll('.meet-thumb').length) {
-    grid.classList.add('empty');
-    grid.innerHTML = '<div class="meet-empty-msg" id="meet-empty">No photos yet - be the first to add some!</div>';
-  }
+  if (!grid.querySelectorAll('.meet-thumb').length) { grid.classList.add('empty'); grid.innerHTML='<div class="meet-empty-msg" id="meet-empty">No photos yet - be the first to add some!</div>'; }
   updateMeetCount();
 }
-
 function updateMeetCount() {
   const grid = document.getElementById('meet-grid');
   const count = grid.querySelectorAll('.meet-thumb').length;
   const pill = document.getElementById('meet-count');
-  if (count > 0) { pill.textContent = count; pill.style.display = 'inline-block'; }
-  else { pill.style.display = 'none'; }
+  if (count > 0) { pill.textContent = count; pill.style.display = 'inline-block'; } else { pill.style.display = 'none'; }
 }
 
 // ---- Event rows ----
@@ -383,135 +480,95 @@ function renderLyndon(data, containerId, prefix) {
   const el = document.getElementById(containerId);
   data.forEach(({t,e,g,q,a}, i) => {
     const rowId = `${prefix}-${i}`;
-    const gb = g==='Girls'
-      ? `<span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;background:#FBEAF0;color:#72243E;padding:2px 5px;border-radius:3px;">G</span>`
-      : `<span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;background:#E6F1FB;color:#0C447C;padding:2px 5px;border-radius:3px;">B</span>`;
+    const gb = g==='Girls' ? `<span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;background:#FBEAF0;color:#72243E;padding:2px 5px;border-radius:3px;">G</span>` : `<span style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;background:#E6F1FB;color:#0C447C;padding:2px 5px;border-radius:3px;">B</span>`;
     const ql = q ? `<div class="qbadge" style="margin-bottom:3px;">* If Qualified</div>` : '';
-    el.innerHTML += `
-      <div class="lrow${q?' q':''}" id="row-${rowId}">
-        <div class="lrow-main">
-          <div class="ltime">${t}</div>
-          <div class="lrow-center">${ql}<div class="levent">${e} ${gb}</div><div class="lathletes">${a}</div></div>
-          <button class="photo-btn" id="btn-${rowId}" onclick="toggleStrip('${rowId}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span class="btn-label">Photos</span>
-            <span class="chevron"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
-          </button>
-        </div>
-        <div class="photo-strip" id="strip-${rowId}">
-          <div class="photo-add-thumb" onclick="triggerUpload('${rowId}')">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            <span>Add</span>
-          </div>
-        </div>
-      </div>`;
+    el.innerHTML += `<div class="lrow${q?' q':''}" id="row-${rowId}"><div class="lrow-main"><div class="ltime">${t}</div><div class="lrow-center">${ql}<div class="levent">${e} ${gb}</div><div class="lathletes">${a}</div></div><button class="photo-btn" id="btn-${rowId}" onclick="toggleStrip('${rowId}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="btn-label">Photos</span><span class="chevron"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span></button></div><div class="photo-strip" id="strip-${rowId}"><div class="photo-add-thumb" onclick="triggerUpload('${rowId}')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>Add</span></div></div></div>`;
   });
 }
-
-renderLyndon(lfi, 'lfri', 'fri');
-renderLyndon(lsa, 'lsat', 'sat');
+renderLyndon(lfi,'lfri','fri');
+renderLyndon(lsa,'lsat','sat');
 
 function toggleStrip(rowId) {
   const strip = document.getElementById(`strip-${rowId}`);
   const btn = document.getElementById(`btn-${rowId}`);
   const isOpen = strip.classList.contains('open');
-  strip.classList.toggle('open', !isOpen);
-  btn.classList.toggle('open', !isOpen);
+  strip.classList.toggle('open',!isOpen);
+  btn.classList.toggle('open',!isOpen);
 }
-
 function triggerUpload(rowId) {
   pendingRowId = rowId;
   document.getElementById('file-input').value = '';
   document.getElementById('file-input').click();
 }
-
 document.getElementById('file-input').addEventListener('change', async function() {
   if (!pendingRowId || !this.files.length) return;
   const rowId = pendingRowId;
   for (const file of Array.from(this.files)) {
     const ext = file.name.split('.').pop();
     const path = `${rowId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const res = await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(path)}`, {
-      method:'POST', headers:{...hdrs,'Content-Type':file.type}, body:file
-    });
+    const res = await fetch(`${SUPA_URL}/storage/v1/object/${BUCKET}/${encodeURIComponent(path)}`, { method:'POST', headers:{...hdrs,'Content-Type':file.type}, body:file });
     if (res.ok) {
       await insertPhotoRecord(rowId, path);
       const recs = await fetchPhotos(rowId);
-      const newest = recs[recs.length - 1];
-      addThumb(rowId, path, newest.id);
-      updateBtn(rowId);
+      const newest = recs.find(r => r.storage_path === path);
+      if (newest && !knownPhotos[rowId]?.has(newest.id)) {
+        if (!knownPhotos[rowId]) knownPhotos[rowId] = new Set();
+        knownPhotos[rowId].add(newest.id);
+        addThumb(rowId, path, newest.id);
+        updateBtn(rowId);
+      }
     }
   }
 });
 
 function addThumb(rowId, storagePath, recordId) {
   const strip = document.getElementById(`strip-${rowId}`);
+  if (!strip) return;
   const addBtn = strip.querySelector('.photo-add-thumb');
   const url = publicUrl(storagePath);
   const thumb = document.createElement('div');
   thumb.className = 'photo-thumb';
-  thumb.innerHTML = `
-    <img src="${url}" alt="event photo" onclick="openLightbox('${url}')">
-    <button class="del-btn" onclick="removeThumb('${rowId}','${recordId}','${storagePath}',this)" title="Remove">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>`;
+  thumb.dataset.recordId = recordId;
+  thumb.innerHTML = `<img src="${url}" alt="event photo" onclick="openLightbox('${url}')"><button class="del-btn" onclick="removeThumb('${rowId}','${recordId}','${storagePath}',this)" title="Remove"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
   strip.insertBefore(thumb, addBtn);
 }
-
 async function removeThumb(rowId, recordId, path, btn) {
   const thumb = btn.closest('.photo-thumb');
   thumb.style.opacity = '0.4';
   await deletePhotoRecord(recordId, path);
+  if (knownPhotos[rowId]) knownPhotos[rowId].delete(recordId);
   thumb.remove();
   updateBtn(rowId);
 }
-
 function updateBtn(rowId) {
   const strip = document.getElementById(`strip-${rowId}`);
   const count = strip.querySelectorAll('.photo-thumb').length;
   const btn = document.getElementById(`btn-${rowId}`);
+  if (!btn) return;
   const chevron = `<span class="chevron"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
   const cam = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
   const isOpen = btn.classList.contains('open');
   btn.classList.toggle('has-photos', count > 0);
-  if (count > 0) {
-    btn.innerHTML = `${cam} <span class="btn-label">Photos <span class="photo-count">${count}</span></span> ${chevron}`;
-  } else {
-    btn.innerHTML = `${cam} <span class="btn-label">Photos</span> ${chevron}`;
-  }
+  btn.innerHTML = count > 0 ? `${cam} <span class="btn-label">Photos <span class="photo-count">${count}</span></span> ${chevron}` : `${cam} <span class="btn-label">Photos</span> ${chevron}`;
   btn.classList.toggle('open', isOpen);
 }
 
-function openLightbox(url) {
-  document.getElementById('lightbox-img').src = url;
-  document.getElementById('lightbox').classList.add('open');
-}
-function closeLightbox() {
-  document.getElementById('lightbox').classList.remove('open');
-  document.getElementById('lightbox-img').src = '';
-}
+function openLightbox(url) { document.getElementById('lightbox-img').src=url; document.getElementById('lightbox').classList.add('open'); }
+function closeLightbox() { document.getElementById('lightbox').classList.remove('open'); document.getElementById('lightbox-img').src=''; }
 
-// Load all photos on Lyndon tab open
+// ---- Initial load + auto-refresh ----
 let photosLoaded = false;
-async function loadAllPhotos() {
-  // Load meet gallery
-  const meetRecs = await fetchPhotos(MEET_ROW_ID);
-  meetRecs.forEach(rec => addMeetThumb(rec.storage_path, rec.id));
-  updateMeetCount();
-
-  // Load event row photos
-  const allRows = [...lfi.map((_,i)=>`fri-${i}`), ...lsa.map((_,i)=>`sat-${i}`)];
-  for (const rowId of allRows) {
-    const records = await fetchPhotos(rowId);
-    records.forEach(rec => addThumb(rowId, rec.storage_path, rec.id));
-    updateBtn(rowId);
-  }
+async function initialLoad() {
+  setSyncing(true);
+  await reloadAllPhotos();
+  setSyncing(false);
+  startAutoRefresh();
 }
 
 function showTab(n) {
   document.querySelectorAll('.tab').forEach((t,i)=>{t.classList.toggle('active',['field','running','scoring','lyndon'][i]===n);});
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+n).classList.add('active');
-  if (n === 'lyndon' && !photosLoaded) { photosLoaded = true; loadAllPhotos(); }
+  if (n==='lyndon' && !photosLoaded) { photosLoaded=true; initialLoad(); }
 }
 </script>
